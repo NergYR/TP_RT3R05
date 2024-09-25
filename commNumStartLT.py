@@ -1,7 +1,9 @@
 #!/usr/bin/env python3.10
 
 import numpy as np
-       
+import matplotlib.pyplot as plt
+
+
 class Modem :
     """
         Classe permettant d'implémenter un MODulateur/dEModulateur PAM ou ASK (2,4,8), QPSK et 16QAM.
@@ -81,33 +83,47 @@ class Modem :
     
     
 class Mesure:
-    def __init__(self, signal):
+    def __init__(self, signal): # Vérifie que le signal est un tableau numpy
         self.signal = signal
-        
-    
-    def DSP(signal,fe, type='Bi', unit='dBm'):
-        N = len(signal)
-        tfft = N*te
-        te = 1/fe
 
-        #Calcul de la FFT bilatérale
-        Y_tranche = 1/N*(np.fft.fft(signal))
+    def DSP(self, fe, type='Bi', unit='dBm'):  # Ajout de self comme premier argument
+        signal = self.signal  # Utilisation du signal de l'instance
+        N = signal.shape[0]  # Nombre de points du signal
+        te = 1 / fe  # Période d'échantillonnage
+        f_tranche = np.fft.fftfreq(N, d=te)  # Fréquences associées aux bins FFT
 
-        #Calcul de la FFT Mono latérale
-        Y_tranche_mono = np.concatenate((Y_tranche[0:1], 2*Y_tranche[1:int(N/2)]))
-        Y_tranche_mod = np.abs(Y_tranche_mono)
+        # Calcul de la FFT bilatérale
+        Y_fft = np.fft.fft(signal) / N  # Normalisation de la FFT
 
+        if type == 'Bi':  # Affichage bilatéral
+            Y_tranche_mod = np.abs(Y_fft)
+            f_tranche = np.fft.fftshift(f_tranche)  # Décale la fréquence pour centrer sur 0 Hz
+            Y_tranche_mod = np.fft.fftshift(Y_tranche_mod)  # Applique le même décalage sur le spectre
+        elif type == 'mono':  # Affichage mono-latéral
+            Y_tranche_mod = np.abs(Y_fft[:N // 2]) * 2  # Mono-latéral : on garde la moitié positive et double l'amplitude
+            f_tranche = f_tranche[:N // 2]  # On garde la moitié des fréquences positives
+        else:
+            raise ValueError("Le paramètre 'type' doit être 'Bi' ou 'mono'.")
 
-        # Calcul de la Densité spectrale en Volt efficace sur RBW
-        Y_eff_tranche = Y_tranche_mod/np.sqrt(2)
+        if unit == 'Volts':  # Si l'unité demandée est en Volts efficaces
+            Y_output = Y_tranche_mod / np.sqrt(2)  # En Volts efficaces
+            ylabel = 'Amplitude (Volts efficaces)'
+        elif unit == 'dBm':  # Sinon, on considère l'unité en dBm par défaut
+            Y_output = 10 * np.log10(np.square(Y_tranche_mod) / 50 * 1000)  # En dBm (Puissance sur 50 ohms)
+            ylabel = 'Amplitude (dBm)'
+        else:
+            raise ValueError("L'unité doit être 'Volts' ou 'dBm'.")
 
-        # Calcul de la Densité spectrale en dBm sur RBW
-        Y_dBm_tranche = 10*np.log10(np.square(Y_eff_tranche)/50*1000)
+        # Affichage de la DSP
+        plt.plot(f_tranche, Y_output)
+        plt.xlabel('Fréquence (Hz)')
+        plt.ylabel(ylabel)
+        plt.title('Densité Spectrale de Puissance (DSP)')
+        plt.grid(True)
+        plt.show()
 
-        # Calcul de la plage de fréquence pour la FFT
-        f_tranche = np.arange(0, fe/2, fe/N)
-        
-
+        # Retourne les vecteurs fréquence et amplitude
+        return f_tranche, Y_output
 
 
 class Test :
