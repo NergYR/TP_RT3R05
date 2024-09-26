@@ -86,7 +86,7 @@ class Modem :
         symbs_mod=np.array([self.mapping_table[tuple(symb)] for symb in self.symbs_num])
         return(symbs_mod)
     
-    def filtre_MF(self, symbols, n_echantillons, filtre_type='rectangular'):
+    def filtre_MF(self, symbols, upsampling, filtre_type='rectangular'):
         """
         Filtre de mise en forme pour les symboles de modulation.
 
@@ -98,7 +98,7 @@ class Modem :
         Retourne :
         - Un vecteur avec les échantillons.
         """
-        self.nech = n_echantillons  # Attribuer le nombre d'échantillons à l'attribut d'instance
+        self.nech = upsampling  # Attribuer le nombre d'échantillons à l'attribut d'instance
         samples = []
 
         if filtre_type == 'rectangular':
@@ -115,6 +115,58 @@ class Modem :
             raise ValueError("Type de filtre non reconnu. Utilisez 'rectangular', 'manchester' ou 'cosur'.")
 
         return np.array(samples)  # Retourner les échantillons sous forme de numpy array
+    
+    
+    def downsample(self, signal, n, offset=0):
+        
+        
+        """
+        Réduit le taux d'échantillonnage d'un signal.
+
+        Paramètres :
+        - signal : signal à traiter.
+        - n : facteur de réduction du taux d'échantillonnage.
+        - offset: décalage initial (par défaut 0).
+
+        Retourne :
+        - Le signal échantillonné.
+        """
+        if self.symb_type == 'complexe':
+            signal_down=np.array([], dtype=complex)
+        else :
+            signal_down=np.array([])
+        for i in range(offset, len(signal), n):
+            signal_down = np.append(signal_down,signal[i])
+        return(signal_down)
+    
+    
+    def detection(self, symbs_rcv):
+        constellation = np.array([val for val in self.mapping_table.values()])
+        if self.symb_type == 'complexe':
+            symbs_detect=[min(constellation, key=lambda symb_mod:abs(np.square(np.real(symbr)-
+            np.real(symb_mod))+np.square(np.imag(symbr)-np.imag(symb_mod)))) for symbr in symbs_rcv]
+        else :
+            symbs_detect=[min(constellation, key=lambda symb_mod:abs(symbr-symb_mod)) for symbr in
+            symbs_rcv]
+        return(np.array(symbs_detect))
+    
+    
+    def demapping(self, symbs_detect):
+        demapping_table = {v: k for k, v in self.mapping_table.items()}
+        symbs_num = np.array([demapping_table[symb] for symb in symbs_detect])
+        return(symbs_num)
+    
+    def calcul_erreur_decodage(self, symbs_orig, symbs_detect):
+        
+        # Calcul de l'écart quadratique moyen
+        mse = np.mean(np.square(symbs_orig - symbs_detect))
+        return mse
+    
+    
+    
+
+
+        
     
 
 # Définition de la classe Mesure
