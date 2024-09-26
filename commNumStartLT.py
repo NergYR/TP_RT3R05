@@ -250,6 +250,16 @@ class Source:
         # Génération de bits aléatoires avec une probabilité de 0.5 pour 0 ou 1
         bits = np.random.binomial(1, 0.5, nb_bits)
         return bits
+    
+    def frame_to_bits(frame):
+        frame_dec =list(bytes(frame))
+        frame_bin=[]
+        for val in frame_dec:
+            z=format(val, "08b")
+            frame_bin += list(z)
+            bits=np.array([int(x) for x in frame_bin])
+        return(bits)
+
     def icmp(ip_dest, ip_src='192.168.1.1', mac_src='00:01:02:03:04:05', mac_dest='06:07:08:09:0A:0B', type='echo-request'):
         """
         Crée un paquet ICMP et retourne la séquence binaire correspondante.
@@ -274,11 +284,11 @@ class Source:
 
         # Ajout des adresses MAC
         ether = Ether(src=mac_src, dst=mac_dest) / packet
-        raw_packet = bytes(ether)
-
-        # Conversion en tableau numpy
-        binary_array = np.frombuffer(raw_packet, dtype=np.uint8)
-        return binary_array
+        bits = Source.frame_to_bits(ether)
+        
+        return bits
+    
+    
 
 
 class Canal: 
