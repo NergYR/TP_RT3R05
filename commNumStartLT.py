@@ -39,7 +39,7 @@ class Modem :
             
         self.nech = 1 
          
-    def create_MP(self, amplitude):
+    def create_MP(self, amplitude, phase_origine=0):
         """
         Fonction en charge de créer la table de mapping de chaque modulation
     
@@ -72,12 +72,38 @@ class Modem :
                                 (1,0,0) : 1,
                                 (1,0,1) : 3,
                                 (1,1,0) : 5,
-                                (1,1,1) : 7}   
+                                (1,1,1) : 7}  
+            case ('QPSK',4) :
+                mapping_table = {(0,0) : 1+1j,
+                                (0,1) : -1+1j,
+                                (1,0) : -1-1j,
+                                (1,1) : 1-1j}
+            case ('QAM',16) :
+                mapping_table = {(0,0,0,0) : -3-3j,
+                                 (0,0,0,1) : -3-1j,
+                                 (0,0,1,0) : -3+3j,
+                                 (0,0,1,1) : -3+1j,
+                                 (0,1,0,0) : -1-3j,
+                                 (0,1,0,1) : -1-1j,
+                                 (0,1,1,0) : -1+3j,
+                                 (0,1,1,1) : -1+1j,
+                                 (1,0,0,0) : 3-3j,
+                                 (1,0,0,1) : 3-1j,
+                                 (1,0,1,0) : 3+3j,
+                                 (1,0,1,1) : 3+1j,
+                                 (1,1,0,0) : 1-3j,
+                                 (1,1,0,1) : 1-1j,
+                                 (1,1,1,0) : 1+3j,
+                                 (1,1,1,1) : 1+1j}
+                
+                
             case _:
                 mapping_table = None
                 print(f'La modulation {self.nsymb}{self.modtype} n\'est pas implémentée')
-        for key in mapping_table.keys() :
-            mapping_table[key] = mapping_table[key] * amplitude / (self.nsymb-1)
+        if mapping_table is not None:
+            for key in mapping_table.keys():
+                mapping_table[key] = mapping_table[key] * amplitude / (self.nsymb-1) * np.exp(1j * phase_origine)
+    
         self.mapping_table = mapping_table
         return(mapping_table)
 
