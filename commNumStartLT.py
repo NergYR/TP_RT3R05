@@ -73,12 +73,12 @@ class Modem :
                                 (1,0,1) : 3,
                                 (1,1,0) : 5,
                                 (1,1,1) : 7}  
-            case ('QPSK',4) :
+            case ('PSK',4) :
                 mapping_table = {(0,0) : 1+1j,
                                 (0,1) : -1+1j,
                                 (1,0) : -1-1j,
                                 (1,1) : 1-1j}
-            case ('QAM',16) :
+            case ('PSK',16) :
                 mapping_table = {(0,0,0,0) : -3-3j,
                                  (0,0,0,1) : -3-1j,
                                  (0,0,1,0) : -3+3j,
@@ -107,8 +107,8 @@ class Modem :
         self.mapping_table = mapping_table
         return(mapping_table)
 
-    def mapping(self, amplitude):
-        self.mapping_table = self.create_MP(amplitude)
+    def mapping(self, amplitude, phase_origine=0):
+        self.mapping_table = self.create_MP(amplitude, phase_origine=0)
         symbs_mod=np.array([self.mapping_table[tuple(symb)] for symb in self.symbs_num])
         return(symbs_mod)
     
