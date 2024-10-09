@@ -163,7 +163,7 @@ class Modem :
             signal_down=np.array([])
         for i in range(offset, len(signal), n):
             signal_down = np.append(signal_down,signal[i])
-        return(signal_down)
+        return(signal_down) 
     
     
     def detection(self, symbs_rcv):
@@ -188,9 +188,61 @@ class Modem :
         mse = np.mean(np.square(symbs_orig - symbs_detect))
         return mse
     
+    def upconv(self, env_complexe, f0, Te):
+        t = np.arange(0, len(env_complexe)*Te, Te)
+        reel = np.cos(2*np.pi*f0*t)
+        im = np.sin(2*np.pi*f0*t)
+        exp = reel+im*1j
+        
+        signal_analytique = env_complexe*exp
+        modulated_signal = np.real(signal_analytique)
+        
+        
+        
+        return modulated_signal
     
     
+    def downconv(self, mod_signal, f0, Te, symb_type='complexe'):
+        t = np.arange(0, len(mod_signal)*Te, Te)
+        reel = np.cos(2*np.pi*f0*t)
+        im = np.sin(2*np.pi*f0*t)
+        if symb_type == 'complexe':
+            exp = reel-im*1j
+            signal_analytique = exp*mod_signal
+        else :
+            signal_analytique = reel*mod_signal
+        return signal_analytique
+    
+    
+    def filtre_rcv(signal, fc, Te,type="butter", ordre=5):
+        """
+        Filtre passe-bas pour le signal reçu.
 
+        Paramètres :
+        - signal : signal à traiter.
+        - type : type de filtre ('butter', 'cheby1', 'cheby2', 'ellip', 'bessel').
+        - fc : fréquence de coupure du filtre.
+        - Te : période d'échantillonnage du signal.
+        - ordre : ordre du filtre (par défaut 5).
+
+        Retourne :
+        - Le signal filtré.
+        """
+        if type == "butter":
+            b, a = signal.butter(ordre, 2 * fc * Te, 'low')
+        elif type == "cheby1":
+            b, a = signal.cheby1(ordre, 0.5, 2 * fc * Te, 'low')
+        elif type == "cheby2":
+            b, a = signal.cheby2(ordre, 30, 2 * fc * Te, 'low')
+        elif type == "ellip":
+            b, a = signal.ellip(ordre, 0.5, 30, 2 * fc * Te, 'low')
+        elif type == "bessel":
+            b, a = signal.bessel(ordre, 2 * fc * Te, 'low')
+        else:
+            raise ValueError("Type de filtre non reconnu. Utilisez 'butter', 'cheby1', 'cheby2', 'ellip' ou 'bessel'.")
+
+        signal_filtre = signal.filtfilt(b, a, signal)
+        return signal_filtre
 
         
     
