@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scapy.all import *
 import scapy.all
+import scipy 
 
 
 
@@ -74,10 +75,10 @@ class Modem :
                                 (1,1,0) : 5,
                                 (1,1,1) : 7}  
             case ('PSK',4) :
-                mapping_table = {(0,0) : 1+1j,
-                                (0,1) : -1+1j,
-                                (1,0) : -1-1j,
-                                (1,1) : 1-1j}
+                mapping_table = {(0,0) : amplitude * np.exp(1j*(phase_origine+np.pi/4)),
+                                (0,1) : amplitude * np.exp(1j*(phase_origine+np.pi*3/4)),
+                                (1,0) : amplitude * np.exp(1j*(phase_origine+np.pi*5/4)),
+                                (1,1) : amplitude * np.exp(1j*(phase_origine+np.pi*7/4))}
             case ('PSK',16) :
                 mapping_table = {(0,0,0,0) : -3-3j,
                                  (0,0,0,1) : -3-1j,
@@ -94,16 +95,11 @@ class Modem :
                                  (1,1,0,0) : 1-3j,
                                  (1,1,0,1) : 1-1j,
                                  (1,1,1,0) : 1+3j,
-                                 (1,1,1,1) : 1+1j}
-                
-                
+                                 (1,1,1,1) : 1+1j}   
             case _:
                 mapping_table = None
                 print(f'La modulation {self.nsymb}{self.modtype} n\'est pas implémentée')
-        if mapping_table is not None:
-            for key in mapping_table.keys():
-                mapping_table[key] = mapping_table[key] * amplitude / (self.nsymb-1) * np.exp(1j * phase_origine)
-    
+
         self.mapping_table = mapping_table
         return(mapping_table)
 
@@ -214,37 +210,13 @@ class Modem :
         return signal_analytique
     
     
-    def filtre_rcv(signal, fc, Te,type="butter", ordre=5):
-        """
-        Filtre passe-bas pour le signal reçu.
-
-        Paramètres :
-        - signal : signal à traiter.
-        - type : type de filtre ('butter', 'cheby1', 'cheby2', 'ellip', 'bessel').
-        - fc : fréquence de coupure du filtre.
-        - Te : période d'échantillonnage du signal.
-        - ordre : ordre du filtre (par défaut 5).
-
-        Retourne :
-        - Le signal filtré.
-        """
+    def filtre_rcv(self, signal, fe=100, fc=10, type="butter", ordre=3):
         if type == "butter":
-            b, a = signal.butter(ordre, 2 * fc * Te, 'low')
-        elif type == "cheby1":
-            b, a = signal.cheby1(ordre, 0.5, 2 * fc * Te, 'low')
-        elif type == "cheby2":
-            b, a = signal.cheby2(ordre, 30, 2 * fc * Te, 'low')
-        elif type == "ellip":
-            b, a = signal.ellip(ordre, 0.5, 30, 2 * fc * Te, 'low')
-        elif type == "bessel":
-            b, a = signal.bessel(ordre, 2 * fc * Te, 'low')
-        else:
-            raise ValueError("Type de filtre non reconnu. Utilisez 'butter', 'cheby1', 'cheby2', 'ellip' ou 'bessel'.")
-
-        signal_filtre = signal.filtfilt(b, a, signal)
+            b, a = scipy.signal.butter(ordre*2, 2 * fc / fe, 'low')
+            signal_filtre = scipy.signal.filtfilt(b, a, signal)
+        else: 
+            raise ValueError("Le type de filtre doit être 'butter'.")
         return signal_filtre
-
-        
     
 
 # Définition de la classe Mesure
