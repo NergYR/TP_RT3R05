@@ -79,7 +79,7 @@ class Modem :
                                 (0,1) : amplitude * np.exp(1j*(phase_origine+np.pi*3/4)),
                                 (1,0) : amplitude * np.exp(1j*(phase_origine+np.pi*5/4)),
                                 (1,1) : amplitude * np.exp(1j*(phase_origine+np.pi*7/4))}
-            case ('PSK',16) :
+            case ('QAM',16) :
                 mapping_table = {(0,0,0,0) : -3-3j,
                                  (0,0,0,1) : -3-1j,
                                  (0,0,1,0) : -3+3j,
@@ -96,6 +96,9 @@ class Modem :
                                  (1,1,0,1) : 1-1j,
                                  (1,1,1,0) : 1+3j,
                                  (1,1,1,1) : 1+1j}   
+                
+
+            
             case _:
                 mapping_table = None
                 print(f'La modulation {self.nsymb}{self.modtype} n\'est pas implémentée')
