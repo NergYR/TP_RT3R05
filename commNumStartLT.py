@@ -10,7 +10,7 @@ import scipy
 
 class Modem :
     """
-        Classe permettant d'implémenter un MODulateur/dEModulateur PAM ou ASK (2,4,8), QPSK et 16QAM.
+        Classe permettant d'implémenter un Modulateur/demodulateur PAM ou ASK (2,4,8), QPSK et 16QAM.
     """
 
     def __init__(self, ModType, NbSymboles, bits):
@@ -107,39 +107,53 @@ class Modem :
         return(mapping_table)
 
     def mapping(self, amplitude, phase_origine=0):
+        """
+        Maps the bits to symbols based on the modulation type and the mapping table.
+
+        Parameters:
+        - amplitude (float): The maximum amplitude of the symbol for a PAM or ASK modulation,
+                               the maximum amplitude of the sine wave for a PSK modulation,
+                               the maximum amplitude of I and Q for a QAM modulation.
+        - phase_origine (float): Only used for QPSK modulation, the phase at the origin of the first
+                                  symbol (default = 0).
+
+        Returns:
+        - symbs_mod (numpy.ndarray): The array containing the modulated symbols.
+        """
         self.mapping_table = self.create_MP(amplitude, phase_origine=0)
         symbs_mod=np.array([self.mapping_table[tuple(symb)] for symb in self.symbs_num])
         return(symbs_mod)
+
     
     def filtre_MF(self, symbols, upsampling, filtre_type='rectangular'):
         """
         Filtre de mise en forme pour les symboles de modulation.
 
-        Paramètres :
-        - symbols : vecteur des symboles de modulation à envoyer.
-        - n_echantillons : nombre d'échantillons par symbole.
-        - filtre_type : type de filtre ('rectangular', 'manchester', 'cosur').
-        
-        Retourne :
-        - Un vecteur avec les échantillons.
+        Parameters:
+        - symbols : vector of the modulation symbols to be transmitted.
+        - n_echantillons : number of samples per symbol.
+        - filtre_type : type of filter ('rectangular', 'manchester', 'cosur').
+
+        Returns:
+        - A vector containing the samples after the filtering process.
         """
-        self.nech = upsampling  # Attribuer le nombre d'échantillons à l'attribut d'instance
+        self.nech = upsampling  # Attribute the number of samples to the instance attribute
         samples = []
 
         if filtre_type == 'rectangular':
             for symbol in symbols:
-                # Pour chaque symbole, ajouter n_echantillons de la même valeur
+                # For each symbol, add n_echantillons of the same value
                 samples.extend([symbol] * self.nech)
         elif filtre_type == 'manchester':
-            # Implémentation du filtre Manchester (à compléter si nécessaire)
-            raise NotImplementedError("Filtre Manchester non implémenté.")
+            # Implementation of the Manchester filter (to be completed if necessary)
+            raise NotImplementedError("Manchester filter not implemented.")
         elif filtre_type == 'cosur':
-            # Implémentation du filtre en cosinus surélevé (à compléter si nécessaire)
-            raise NotImplementedError("Filtre en cosinus surélevé non implémenté.")
+            # Implementation of the envelope filter (to be completed if necessary)
+            raise NotImplementedError("Envelope filter not implemented.")
         else:
-            raise ValueError("Type de filtre non reconnu. Utilisez 'rectangular', 'manchester' ou 'cosur'.")
+            raise ValueError("Filter type not recognized. Use 'rectangular', 'manchester' or 'cosur'.")
 
-        return np.array(samples)  # Retourner les échantillons sous forme de numpy array
+        return np.array(samples)  # Return the samples as a numpy array
     
     
     def downsample(self, signal, n, offset=0):
@@ -165,21 +179,38 @@ class Modem :
         return(signal_down) 
     
     
-    def detection(self, symbs_rcv):
+    def detection(self, symbs_rcv: np.ndarray) -> np.ndarray:
+        """
+        Detects the transmitted symbols from the received symbols.
+
+        Parameters:
+        - symbs_rcv (np.ndarray): The received symbols as a numpy array.
+
+        Returns:
+        - np.ndarray: The detected symbols as a numpy array.
+        """
         constellation = np.array([val for val in self.mapping_table.values()])
         if self.symb_type == 'complexe':
-            symbs_detect=[min(constellation, key=lambda symb_mod:abs(np.square(np.real(symbr)-
-            np.real(symb_mod))+np.square(np.imag(symbr)-np.imag(symb_mod)))) for symbr in symbs_rcv]
-        else :
-            symbs_detect=[min(constellation, key=lambda symb_mod:abs(symbr-symb_mod)) for symbr in
-            symbs_rcv]
-        return(np.array(symbs_detect))
+            symbs_detect = [min(constellation, key=lambda symb_mod: abs(np.square(np.real(symbr) - np.real(symb_mod)) + np.square(np.imag(symbr) - np.imag(symb_mod)))) for symbr in symbs_rcv]
+        else:
+            symbs_detect = [min(constellation, key=lambda symb_mod: abs(symbr - symb_mod)) for symbr in symbs_rcv]
+        return np.array(symbs_detect)
     
     
-    def demapping(self, symbs_detect):
+    def demapping(self, symbs_detect: np.ndarray) -> np.ndarray:
+        """
+        Demap the detected symbols from the received symbols.
+
+        Parameters:
+        - symbs_detect (np.ndarray): The received symbols as a numpy array.
+
+        Returns:
+        - np.ndarray: The demapped symbols as a numpy array.
+        """
         demapping_table = {v: k for k, v in self.mapping_table.items()}
         symbs_num = np.array([demapping_table[symb] for symb in symbs_detect])
         return(symbs_num)
+
     
     def calcul_erreur_decodage(self, symbs_orig, symbs_detect):
         
@@ -188,20 +219,41 @@ class Modem :
         return mse
     
     def upconv(self, env_complexe, f0, Te):
-        t = np.arange(0, len(env_complexe)*Te, Te)
-        reel = np.cos(2*np.pi*f0*t)
-        im = np.sin(2*np.pi*f0*t)
-        exp = reel+im*1j
-        
-        signal_analytique = env_complexe*exp
+        """
+        This function upconverts the complex envelope 'env_complexe' to a modulated signal.
+
+        Parameters:
+        - env_complexe (numpy.ndarray): The complex envelope of the signal to be modulated.
+        - f0 (float): The carrier frequency in Hz.
+        - Te (float): The time duration of one symbol in seconds.
+
+        Returns:
+        - numpy.ndarray: The modulated signal after upconversion.
+        """
+        t = np.arange(0, len(env_complexe) * Te, Te)
+        reel = np.cos(2 * np.pi * f0 * t)
+        im = np.sin(2 * np.pi * f0 * t)
+        exp = reel + im * 1j
+        signal_analytique = env_complexe * exp
         modulated_signal = np.real(signal_analytique)
-        
-        
-        
+
         return modulated_signal
+
     
     
     def downconv(self, mod_signal, f0, Te, symb_type='complexe'):
+        """
+        This function downconverts the complex envelope 'mod_signal' to a baseband signal.
+
+        Parameters:
+        - mod_signal (numpy.ndarray): The complex envelope of the signal to be downconverted.
+        - f0 (float): The carrier frequency in Hz.
+        - Te (float): The time duration of one symbol in seconds.
+        - symb_type (str, optional): The type of modulation. Defaults to 'complexe'.
+
+        Returns:
+        - numpy.ndarray: The downconverted signal after passing through the baseband filter.
+        """
         t = np.arange(0, len(mod_signal)*Te, Te)
         reel = np.cos(2*np.pi*f0*t)
         im = np.sin(2*np.pi*f0*t)
@@ -211,6 +263,7 @@ class Modem :
         else :
             signal_analytique = reel*mod_signal
         return signal_analytique
+
     
     
     def filtre_rcv(self, signal, fe=100, fc=10, type="butter", ordre=3):
@@ -261,6 +314,8 @@ class Mesure:
         plt.xlabel('Fréquence (Hz)')
         plt.ylabel(ylabel)
         plt.title('Densité Spectrale de Puissance (DSP)')
+        plt.ylim(-100 ,0)
+        plt.xlim(-2000, 2000)
         plt.grid(True)
         plt.show()
 
@@ -345,12 +400,23 @@ class Source:
 
 
 class Canal: 
-    @staticmethod 
-    def awgn(signal, mean, std) :
+    @staticmethod
+    def awgn(signal: np.ndarray, mean: float, std: float) -> np.ndarray:
+        """
+        This function adds white Gaussian noise to the input signal.
+
+        Parameters:
+        - signal (np.ndarray): The input signal to be corrupted by noise.
+        - mean (float): The mean value of the Gaussian noise.
+        - std (float): The standard deviation of the Gaussian noise.
+
+        Returns:
+        - np.ndarray: The corrupted signal with added Gaussian noise.
+        """
         num_samples = len(signal)
         noise = np.random.normal(mean, std, size=num_samples)
-        signal_bruite=signal+noise
-        return(signal_bruite)
+        signal_bruite = signal + noise
+        return signal_bruite
         
 
 
